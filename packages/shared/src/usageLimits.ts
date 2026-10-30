@@ -407,6 +407,8 @@ export interface LimitPoolWindow {
   >;
   readonly remainingPercent: number;
   readonly usedPercent: number;
+  /** Summed only when every member reports an absolute allowance. */
+  readonly amount: LimitAmount | null;
   readonly pace: LimitPace | null;
   readonly resets: ReadonlyArray<{
     readonly member: LimitPoolMember;
@@ -539,7 +541,14 @@ function poolMember(account: LimitAccount, reported: ServerProviderUsageWindow, 
   return {
     account,
     // Suppression is not session spending, so it has no session pace clock.
-    window: { ...reported, usedPercent: 100, resetsAt, windowDurationMins: undefined },
+    window: {
+      ...reported,
+      usedPercent: 100,
+      resetsAt,
+      windowDurationMins: undefined,
+      remaining: undefined,
+      limit: undefined,
+    },
     refillPercent,
   };
 }
@@ -596,6 +605,12 @@ function poolWindows(accounts: readonly LimitAccount[], now: number): readonly L
       ),
       usedPercent: Math.round(usedPercent),
       remainingPercent: Math.round(100 - usedPercent),
+      amount: members.reduce<LimitAmount | null>((total, member) => {
+        const amount = limitAmount(member.window);
+        return total === null || amount === null
+          ? null
+          : { remaining: total.remaining + amount.remaining, limit: total.limit + amount.limit };
+      }, ZERO_AMOUNT),
       pace: meanElapsed === null ? null : paceOfShares(timedUsed, meanElapsed),
       resets,
     };
@@ -611,6 +626,23 @@ export function limitsNotice(limits: ServerProviderUsageLimits): string | null {
     return limits.unavailable.message ?? "Could not read limits.";
   }
   return limits.windows.length === 0 ? "No limits reported." : null;
+}
+
+export interface LimitAmount {
+  readonly remaining: number;
+  readonly limit: number;
+}
+
+const ZERO_AMOUNT: LimitAmount = { remaining: 0, limit: 0 };
+
+export function limitAmount(window: ServerProviderUsageWindow): LimitAmount | null {
+  return window.remaining === undefined || window.limit === undefined
+    ? null
+    : { remaining: Math.min(window.remaining, window.limit), limit: window.limit };
+}
+
+export function formatLimitAmount(amount: LimitAmount): string {
+  return `${amount.remaining.toLocaleString()} / ${amount.limit.toLocaleString()}`;
 }
 
 export function remainingPercent(window: ServerProviderUsageWindow): number {

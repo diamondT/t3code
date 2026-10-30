@@ -6,7 +6,9 @@ import {
   collectLimitPools,
   cursorUsageWindowDetails,
   displayLimitWindows,
+  formatLimitAmount,
   formatResetsIn,
+  limitAmount,
   type LimitAccount,
   type LimitPool,
   type LimitPoolMember,
@@ -149,6 +151,7 @@ function SegmentPopover({
 }) {
   const timestampFormat = usePrimarySettings((settings) => settings.timestampFormat);
   const remaining = remainingPercent(window);
+  const amount = limitAmount(window);
   const timeLeft = paceRemainingPercent(window, now);
   const resetsIn = formatResetsIn(window, now);
   const where =
@@ -183,7 +186,9 @@ function SegmentPopover({
         ) : null}
       </div>
       <div className="flex flex-col gap-1 border-t border-border/60 pt-2.5">
-        <Row label="Left">{remaining}%</Row>
+        <Row label="Left">
+          {remaining}%{amount ? ` · ${formatLimitAmount(amount)}` : ""}
+        </Row>
         {window.resetsAt ? (
           <Row label="Resets">
             {formatUpcomingTimestamp(window.resetsAt, timestampFormat, now)}
@@ -554,6 +559,11 @@ function PoolWindowCard({
             {pool.pace ? <PaceIcon pace={pool.pace} /> : null}
           </span>
         </span>
+        {pool.amount ? (
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {formatLimitAmount(pool.amount)}
+          </span>
+        ) : null}
         {nextRefill && pool.columns.length > 1 ? (
           <span className="text-xs font-medium text-foreground tabular-nums">
             ↻ +{nextRefill.restoresPercent}%

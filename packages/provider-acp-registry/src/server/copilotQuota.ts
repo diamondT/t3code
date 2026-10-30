@@ -33,6 +33,7 @@ const QUOTA_LABELS: Readonly<Record<string, string>> = {
 const QuotaSnapshot = Schema.Struct({
   entitlement: Schema.optional(Schema.Number),
   percent_remaining: Schema.optional(Schema.Number),
+  remaining: Schema.optional(Schema.Number),
   unlimited: Schema.optional(Schema.Boolean),
 });
 
@@ -98,6 +99,12 @@ export function copilotQuotaToLimits(
           label,
           usedPercent: clampPercent(100 - snapshot.percent_remaining),
           ...(Option.isSome(reset) ? { resetsAt: DateTime.formatIso(reset.value) } : {}),
+          ...(snapshot.remaining !== undefined && Number.isFinite(snapshot.remaining)
+            ? {
+                remaining: Math.max(0, Math.floor(snapshot.remaining)),
+                limit: Math.round(snapshot.entitlement!),
+              }
+            : {}),
         },
       ];
     },

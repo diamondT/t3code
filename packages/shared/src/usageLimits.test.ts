@@ -919,6 +919,16 @@ describe("pooled account columns", () => {
     ]);
   });
 
+  it("sums absolute allowances only when every pooled account reports one", () => {
+    const counted = { ...window, remaining: 400, limit: 1000 };
+    const amountOf = (accounts: Parameters<typeof collectLimitPools>[0]) =>
+      collectLimitPools(accounts, now)[0]!.windows[0]!.amount;
+    expect(
+      amountOf([account("a", [counted]), account("b", [{ ...counted, remaining: 50 }])]),
+    ).toEqual({ remaining: 450, limit: 2000 });
+    expect(amountOf([account("a", [counted]), account("b", [window])])).toBeNull();
+  });
+
   it.each([undefined, "invalid", "2026-09-03T11:30:00.000Z"])(
     "keeps blocked sessions empty without predicting a refill from a missing or stale clock (%s)",
     (resetsAt) => {
