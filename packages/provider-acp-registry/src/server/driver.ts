@@ -14,15 +14,21 @@ import * as Clock from "effect/Clock";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
+import * as Path from "effect/Path";
 import * as Ref from "effect/Ref";
 import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
+import * as HttpClient from "effect/http/HttpClient";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
 import * as ProviderHost from "@t3tools/provider-core/server/ProviderHost";
 import { AcpRegistryAdapterV2Driver, type AcpRegistryAdapterV2DriverEnv } from "./adapter.ts";
+import { isCopilotAgent } from "./copilotAcp.ts";
+import { readCopilotUsageLimits } from "./copilotQuota.ts";
+import { copilotUsageReader } from "./copilotUsage.ts";
 import type { ProviderTextGeneration } from "@t3tools/provider-core/server/textGeneration";
 import { ProviderDriverError } from "@t3tools/provider-core/server/errors";
 import { makeManagedServerProvider } from "@t3tools/provider-core/server/managedProvider";
@@ -445,9 +451,16 @@ export const checkAcpRegistryProviderReadiness = Effect.fn(
     : snapshot;
 });
 
-export type AcpRegistryDriverEnv = AcpRegistryAdapterV2DriverEnv | ProviderHost.ProviderHost;
+export type AcpRegistryDriverEnv =
+  | AcpRegistryAdapterV2DriverEnv
+  | ProviderHost.ProviderHost
+  | HttpClient.HttpClient;
 
-export const AcpRegistryDriver: ProviderDriver<AcpRegistrySettings, AcpRegistryDriverEnv> = {
+export const AcpRegistryDriver: ProviderDriver<
+  AcpRegistrySettings,
+  AcpRegistryDriverEnv,
+  Path.Path
+> = {
   driverKind: DRIVER_KIND,
   metadata: {
     displayName: "ACP Registry",
@@ -456,6 +469,7 @@ export const AcpRegistryDriver: ProviderDriver<AcpRegistrySettings, AcpRegistryD
   },
   configSchema: AcpRegistrySettings,
   defaultConfig: () => decodeSettings({}),
+  usage: copilotUsageReader,
   create: Effect.fn("AcpRegistryDriver.create")(function* ({
     instanceId,
     displayName,
@@ -560,10 +574,27 @@ export const AcpRegistryDriver: ProviderDriver<AcpRegistrySettings, AcpRegistryD
             }),
           );
     });
-    const checkProvider = checkAcpRegistryProviderReadiness(readinessInput).pipe(
+    const httpClient = yield* HttpClient.HttpClient;
+    const fileSystem = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const homeDirectory = yield* HostProcess.HomeDirectory;
+    const withCopilotUsageLimits = (provider: ServerProvider) =>
+      provider.enabled && provider.installed && isCopilotAgent(effectiveConfig)
+        ? readCopilotUsageLimits(processEnvironment).pipe(
+            Effect.map((usageLimits) => ({ ...provider, usageLimits })),
+            Effect.provideService(HttpClient.HttpClient, httpClient),
+            Effect.provideService(FileSystem.FileSystem, fileSystem),
+            Effect.provideService(Path.Path, path),
+            Effect.provideService(HostProcess.HomeDirectory, homeDirectory),
+            Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+          )
+        : Effect.succeed(provider);
+    const checkReadiness = checkAcpRegistryProviderReadiness(readinessInput).pipe(
       Effect.provideService(AcpRegistrySupport.AcpRegistryCatalog, catalog),
       Effect.flatMap(withLiveRuntimeState),
     );
+    // Startup forks a forced check, so the first snapshot skips the network read.
+    const checkProvider = checkReadiness.pipe(Effect.flatMap(withCopilotUsageLimits));
     const enrichProvider = checkAcpRegistryProviderStatus(
       {
         ...readinessInput,
@@ -627,7 +658,7 @@ export const AcpRegistryDriver: ProviderDriver<AcpRegistrySettings, AcpRegistryD
       getSettings: snapshotSettings.getSettings,
       streamSettings: snapshotSettings.streamSettings,
       haveSettingsChanged: haveProviderSnapshotSettingsChanged,
-      initialSnapshot: () => checkProvider,
+      initialSnapshot: () => checkReadiness,
       checkProvider,
       enrichSnapshot: Effect.fn("enrichSnapshot")(function ({
         snapshot,

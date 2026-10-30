@@ -903,6 +903,22 @@ describe("pooled account columns", () => {
     expect(keys(collectLimitPools(accounts.toReversed(), now)[0]!)).toEqual(keys(pool!));
   });
 
+  it("gives each ACP Registry agent its own pool while one driver's accounts share one", () => {
+    const acp = (key: string) => ({
+      ...account(key, [window]),
+      driver: ProviderDriverKind.make("acpRegistry"),
+    });
+    const pools = collectLimitPools(
+      [acp("Claude ACP"), acp("Codex ACP"), account("a", [window]), account("b", [window])],
+      now,
+    );
+    expect(pools.map((pool) => [pool.title, keys(pool)])).toEqual([
+      ["Claude ACP", [["Claude ACP"]]],
+      ["Codex ACP", [["Codex ACP"]]],
+      [null, [["a", "b"]]],
+    ]);
+  });
+
   it.each([undefined, "invalid", "2026-09-03T11:30:00.000Z"])(
     "keeps blocked sessions empty without predicting a refill from a missing or stale clock (%s)",
     (resetsAt) => {
