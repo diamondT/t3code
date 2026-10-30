@@ -55,7 +55,12 @@ const premiumResponse = (login: string): CopilotUserResponse => ({
   token_based_billing: true,
   quota_reset_date_utc: "2026-08-01T00:00:00.000Z",
   quota_snapshots: {
-    premium_interactions: { entitlement: 300, percent_remaining: 25, unlimited: false },
+    premium_interactions: {
+      entitlement: 300,
+      percent_remaining: 25,
+      remaining: 75.4,
+      unlimited: false,
+    },
   },
 });
 
@@ -81,7 +86,14 @@ describe("copilotQuotaToLimits", () => {
   it.each<{
     name: string;
     response: CopilotUserResponse;
-    windows: ReadonlyArray<{ id: string; label: string; usedPercent: number; resetsAt?: string }>;
+    windows: ReadonlyArray<{
+      id: string;
+      label: string;
+      usedPercent: number;
+      resetsAt?: string;
+      remaining?: number;
+      limit?: number;
+    }>;
   }>([
     {
       name: "labels token-billed premium usage as AI credits",
@@ -92,6 +104,8 @@ describe("copilotQuotaToLimits", () => {
           label: "AI credits",
           usedPercent: 75,
           resetsAt: "2026-08-01T00:00:00.000Z",
+          remaining: 75,
+          limit: 300,
         },
       ],
     },
@@ -101,12 +115,23 @@ describe("copilotQuotaToLimits", () => {
         quota_snapshots: {
           chat: { entitlement: 50, percent_remaining: 90, unlimited: false },
           completions: { entitlement: 0, percent_remaining: 100, unlimited: true },
-          premium_interactions: { entitlement: 300, percent_remaining: -20, unlimited: false },
+          premium_interactions: {
+            entitlement: 300,
+            percent_remaining: -20,
+            remaining: -60,
+            unlimited: false,
+          },
         },
       },
       windows: [
         { id: "chat", label: "Chat", usedPercent: 10 },
-        { id: "premium_interactions", label: "Premium requests", usedPercent: 100 },
+        {
+          id: "premium_interactions",
+          label: "Premium requests",
+          usedPercent: 100,
+          remaining: 0,
+          limit: 300,
+        },
       ],
     },
   ])("$name", ({ response, windows }) => {

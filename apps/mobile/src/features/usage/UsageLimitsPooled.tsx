@@ -9,7 +9,9 @@ import {
   collectLimitPools,
   cursorUsageWindowDetails,
   displayLimitWindows,
+  formatLimitAmount,
   formatResetsIn,
+  limitAmount,
   paceRemainingPercent,
   remainingPercent,
   type LimitAccount,
@@ -207,6 +209,11 @@ function PoolWindowCard({
             </Text>
             <Text className="text-sm text-foreground-muted">left</Text>
           </View>
+          {pool.amount ? (
+            <Text className="text-xs tabular-nums text-foreground-muted">
+              {formatLimitAmount(pool.amount)}
+            </Text>
+          ) : null}
         </View>
         {pool.pace ? (
           <Text className="text-xs text-foreground-tertiary">{PACE_LABEL[pool.pace]}</Text>
@@ -550,6 +557,7 @@ export function UsageLimitAccountScreen({ route }: AccountScreenProps) {
     ?.windows.find((candidate) => candidate.id === windowId && candidate.kind === windowKind);
   const window = pool?.members.find((member) => member.account.key === accountKey)?.window;
   const evenPace = window ? paceRemainingPercent(window, now) : null;
+  const amount = window ? limitAmount(window) : null;
   const reset = pool?.resets.find((candidate) => candidate.member.account.key === accountKey);
   const [revealed, setRevealed] = useState(false);
   return (
@@ -595,6 +603,11 @@ export function UsageLimitAccountScreen({ route }: AccountScreenProps) {
               <Text className="text-3xl font-t3-bold tabular-nums text-foreground">
                 {remainingPercent(window)}% left
               </Text>
+              {amount ? (
+                <Text className="text-sm tabular-nums text-foreground-muted">
+                  {formatLimitAmount(amount)}
+                </Text>
+              ) : null}
               {window.resetsAt ? (
                 <Text selectable className="text-sm text-foreground-muted">
                   Resets{" "}

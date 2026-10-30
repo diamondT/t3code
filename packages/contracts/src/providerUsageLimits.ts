@@ -4,6 +4,7 @@ import {
   ForwardCompatibleArray,
   IsoDateTime,
   NonNegativeInt,
+  PositiveInt,
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
 import { ProviderDriverKind, ProviderInstanceId } from "./providerInstance.ts";
@@ -17,6 +18,9 @@ export const ServerProviderUsageWindow = Schema.Struct({
   usedPercent: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 100 })),
   resetsAt: Schema.optional(IsoDateTime),
   windowDurationMins: Schema.optional(NonNegativeInt),
+  /** Absolute allowance in the provider's own unit, when it reports one. */
+  remaining: Schema.optional(NonNegativeInt),
+  limit: Schema.optional(PositiveInt),
 });
 export type ServerProviderUsageWindow = typeof ServerProviderUsageWindow.Type;
 
