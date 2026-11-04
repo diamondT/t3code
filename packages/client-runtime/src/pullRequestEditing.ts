@@ -1,8 +1,11 @@
 import type {
   PullRequestComment,
   PullRequestDetail,
+  PullRequestMergeMethod,
   PullRequestReviewThread,
 } from "@t3tools/contracts";
+
+import { sourceControlClients } from "./sourceControlClients.ts";
 
 type EditingSubject = Pick<
   PullRequestDetail,
@@ -23,6 +26,24 @@ export function canEditPullRequestChangeRequest(detail: EditingSubject): boolean
     sameLogin(detail.viewer, detail.author?.login) ||
     detail.viewerPermissions.actions.includes("merge")
   );
+}
+
+/** Null where this host writes the merge message itself for this method. */
+export function pullRequestMergeMessagePrefill(
+  detail: Pick<PullRequestDetail, "provider" | "capabilities" | "number" | "headBranch" | "title">,
+  method: PullRequestMergeMethod,
+): string | null {
+  if (detail.capabilities.mergeMessageMethods?.includes(method) !== true) return null;
+  return sourceControlClients.get(detail.provider).defaultMergeMessage?.(detail) ?? null;
+}
+
+/** An unchanged prefill sends nothing, so the host's fuller default message still applies. */
+export function pullRequestMergeMessageOverride(
+  draft: string | null,
+  prefill: string,
+): string | undefined {
+  const message = draft?.trim();
+  return !message || message === prefill.trim() ? undefined : message;
 }
 
 export function canEditPullRequestMaintainerEdits(

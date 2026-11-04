@@ -109,6 +109,7 @@ function setup() {
       confirmDeleteBranch={async () => {}}
       pendingAction={null}
       perform={async () => true}
+      onEditMergeMessage={null}
       openOnHostText="Open on GitHub"
       copyReference={() => {}}
     />

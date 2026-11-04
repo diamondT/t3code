@@ -36,6 +36,7 @@ import { PullRequestReviewSheet } from "./features/pull-requests/PullRequestRevi
 import { PullRequestReviewersScreen } from "./features/pull-requests/PullRequestReviewersScreen";
 import { PullRequestLabelsScreen } from "./features/pull-requests/PullRequestLabelsScreen";
 import { PullRequestEditScreen } from "./features/pull-requests/PullRequestEditScreen";
+import { PullRequestMergeMessageScreen } from "./features/pull-requests/PullRequestMergeMessageScreen";
 import { PullRequestFilterSearchScreen } from "./features/pull-requests/PullRequestFilterSearchScreen";
 import {
   RenderErrorBoundary,
@@ -689,6 +690,15 @@ const RootStackConfig = createWorkspaceStackNavigator({
     }),
     PullRequestEdit: createNativeStackScreen({
       screen: PullRequestEditScreen,
+      options: {
+        ...(Platform.OS === "ios" ? SHEET_GLASS_HEADER_OPTIONS : undefined),
+        ...HORIZONTAL_FORM_SHEET_OPTIONS,
+        sheetAllowedDetents: formSheetDetents(0.75),
+        sheetGrabberVisible: true,
+      },
+    }),
+    PullRequestMergeMessage: createNativeStackScreen({
+      screen: PullRequestMergeMessageScreen,
       options: {
         ...(Platform.OS === "ios" ? SHEET_GLASS_HEADER_OPTIONS : undefined),
         ...HORIZONTAL_FORM_SHEET_OPTIONS,

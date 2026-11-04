@@ -1149,6 +1149,50 @@ it.effect(
     }),
 );
 
+it.effect("passes a merge message only for a method the host takes one with", () =>
+  Effect.gen(function* () {
+    const sent: Array<string | undefined> = [];
+    const service = yield* makeService({
+      projects: [project({ id: "p1", title: "web", workspaceRoot: "/a", repository: "acme/web" })],
+      providers: [
+        fakePullRequestProvider(SourceControlProviderKind.make("github"), {
+          capabilities: {
+            ...fakePullRequestProvider(SourceControlProviderKind.make("github")).capabilities,
+            actions: ["merge", "close"],
+            mergeMethods: ["merge", "squash", "rebase"],
+            mergeMessageMethods: ["merge", "squash"],
+          },
+          getChangeRequestSummary: () => Effect.succeed(changeRequest(1, "2026-09-03T00:00:00Z")),
+          runAction: (input) =>
+            Effect.sync(() => {
+              sent.push(input.mergeMessage);
+            }),
+        }),
+      ],
+    });
+    const merge = {
+      projectId: "p1" as ProjectId,
+      repository: "acme/web",
+      number: 1,
+      action: "merge",
+      mergeMessage: "Ship it",
+    } as const;
+
+    for (const refused of [
+      { ...merge, mergeMethod: "rebase" },
+      { ...merge },
+      { ...merge, action: "close", mergeMethod: "squash" },
+    ] as const) {
+      const error = yield* Effect.flip(service.runAction(refused));
+      assert.include(error.message, "cannot take a commit message");
+    }
+    assert.deepStrictEqual(sent, []);
+
+    yield* service.runAction({ ...merge, mergeMethod: "squash" });
+    assert.deepStrictEqual(sent, ["Ship it"]);
+  }),
+);
+
 it.effect("publishes a merge for immediate settlement only after host confirmation", () =>
   Effect.scoped(
     Effect.gen(function* () {

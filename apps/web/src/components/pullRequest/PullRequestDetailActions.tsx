@@ -32,6 +32,7 @@ export type PerformPullRequestAction = (
   action: PullRequestAction,
   method?: PullRequestMergeMethod,
   updateMethod?: PullRequestUpdateMethod,
+  mergeMessage?: string,
 ) => Promise<boolean>;
 
 export function ActOnEnvironmentPicker({
@@ -200,6 +201,7 @@ export function PullRequestPrimaryAction({
   statePresentation,
   pendingAction,
   perform,
+  onEditMergeMessage,
   resolveConflicts,
 }: {
   pullRequestKey: string;
@@ -213,6 +215,8 @@ export function PullRequestPrimaryAction({
   statePresentation: ReturnType<typeof resolvePullRequestState> | null;
   pendingAction: PullRequestAction | null;
   perform: PerformPullRequestAction;
+  /** Set where merging starts by editing the commit message, instead of an inline confirm. */
+  onEditMergeMessage: (() => void) | null;
   resolveConflicts: ReactNode;
 }) {
   const inlineConfirm = useInlineActionConfirm(pullRequestKey);
@@ -338,9 +342,14 @@ export function PullRequestPrimaryAction({
                   disabled={actionPending}
                   aria-disabled={mergeBlockedReason !== null || undefined}
                   aria-description={mergeBlockedReason ?? undefined}
-                  {...(mergeBlockedReason === null
-                    ? inlineConfirm.props("merge", () => void perform("merge", selectedMergeMethod))
-                    : {})}
+                  {...(mergeBlockedReason !== null
+                    ? {}
+                    : onEditMergeMessage !== null
+                      ? { onClick: onEditMergeMessage }
+                      : inlineConfirm.props(
+                          "merge",
+                          () => void perform("merge", selectedMergeMethod),
+                        ))}
                   aria-label={
                     pendingAction === "merge"
                       ? "Merging..."

@@ -1,4 +1,5 @@
 import { resolvePullRequestDetailChecks } from "@t3tools/client-runtime/pull-request-checks";
+import { pullRequestMergeMessagePrefill } from "@t3tools/client-runtime/pull-request-editing";
 import {
   capitalizeTerm,
   sourceControlClients,
@@ -38,11 +39,13 @@ import {
   classifyPullRequestChecks,
   describePullRequestChecks,
   isPullRequestConflicting,
+  PULL_REQUEST_MERGE_METHOD_LABELS,
   resolvePullRequestMergeMethod,
   allowedPullRequestMergeMethods,
   resolveThreadPanelPullRequestAction,
 } from "../pullRequest/pullRequestDetail.logic";
 import { PullRequestChecksPopover } from "../pullRequest/PullRequestChecksPopover";
+import { PullRequestMergeMessageDialog } from "../pullRequest/PullRequestMergeMessageDialog";
 import {
   pullRequestChecksState,
   PullRequestCheckStatusIcon,
@@ -189,6 +192,7 @@ export function ThreadDetailsPrRow({
     resolveProjectDefaultMergeMethod(),
     lastSelectedMergeMethod,
   );
+  const mergeMessagePrefill = detail && pullRequestMergeMessagePrefill(detail, selectedMergeMethod);
 
   const startResolveConflicts = () => {
     if (detail === null) return;
@@ -482,7 +486,20 @@ export function ThreadDetailsPrRow({
       ) : (
         openRow(label, "row")
       )}
-      {rowAction === "merge" ? (
+      {rowAction === "merge" && detail !== null && mergeMessagePrefill !== null ? (
+        <PullRequestMergeMessageDialog
+          open={confirmingMerge}
+          onClose={() => setConfirmingMerge(false)}
+          number={number}
+          baseBranch={detail.baseBranch}
+          hostLabel={sourceControlClients.get(detail.provider).label}
+          term={terminology.singular}
+          methodLabel={PULL_REQUEST_MERGE_METHOD_LABELS[selectedMergeMethod]}
+          prefill={mergeMessagePrefill}
+          pending={actionPending}
+          onMerge={(message) => perform("merge", selectedMergeMethod, message)}
+        />
+      ) : rowAction === "merge" ? (
         <AlertDialog open={confirmingMerge} onOpenChange={(open) => setConfirmingMerge(open)}>
           <AlertDialogPopup>
             <AlertDialogHeader>

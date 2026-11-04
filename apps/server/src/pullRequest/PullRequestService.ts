@@ -2021,6 +2021,20 @@ export const make = Effect.gen(function* () {
           );
         }
         if (
+          input.mergeMessage !== undefined &&
+          (input.action !== "merge" ||
+            input.stackNumber !== undefined ||
+            input.mergeMethod === undefined ||
+            !(project.api.capabilities.mergeMessageMethods ?? []).includes(input.mergeMethod))
+        ) {
+          return Effect.fail(
+            new PullRequestOperationError({
+              operation: "runAction",
+              detail: "This host cannot take a commit message for this merge.",
+            }),
+          );
+        }
+        if (
           input.updateMethod !== undefined &&
           !(project.api.capabilities.updateMethods ?? []).includes(input.updateMethod)
         ) {
@@ -2095,6 +2109,9 @@ export const make = Effect.gen(function* () {
                       ? {}
                       : { expectedStackHeads: input.expectedStackHeads }),
                     ...(input.mergeMethod === undefined ? {} : { mergeMethod: input.mergeMethod }),
+                    ...(input.mergeMessage === undefined
+                      ? {}
+                      : { mergeMessage: input.mergeMessage }),
                     ...(input.updateMethod === undefined
                       ? {}
                       : { updateMethod: input.updateMethod }),

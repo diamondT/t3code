@@ -1,4 +1,5 @@
 import { projectChangeRequestUrl } from "@t3tools/client-runtime/change-request-links";
+import { pullRequestMergeMessagePrefill } from "@t3tools/client-runtime/pull-request-editing";
 import { normalizeThreadPullRequestKey } from "@t3tools/client-runtime/thread-pull-requests";
 import { useAtomValue } from "@effect/atom-react";
 import { usePullRequestStack } from "~/state/usePullRequestStack";
@@ -89,6 +90,7 @@ import { PullRequestDetailGhost, PullRequestTimelineGhost } from "./PullRequestG
 import { PullRequestCopyableCode } from "./PullRequestCopyableCode";
 import { pullRequestRefKey, usePullRequestDetail } from "./usePullRequestDetail";
 import { PullRequestActionsMenu } from "./PullRequestActionsMenu";
+import { PullRequestMergeMessageDialog } from "./PullRequestMergeMessageDialog";
 import {
   PullRequestApproveWorkflowsButton,
   PullRequestCheckoutMenu,
@@ -624,6 +626,7 @@ export function PullRequestDetailPanel({
     reportFailure: false,
   });
   const [pendingAction, setPendingAction] = useState<PullRequestAction | null>(null);
+  const [mergeMessageKey, setMergeMessageKey] = useState<string | null>(null);
   const actionPending = pendingAction !== null;
   const newThread = useNewThreadHandler();
   const { environments } = useEnvironments();
@@ -660,6 +663,7 @@ export function PullRequestDetailPanel({
     action: PullRequestAction,
     method?: PullRequestMergeMethod,
     updateMethod?: PullRequestUpdateMethod,
+    mergeMessage?: string,
   ) => {
     onActed?.(action, "sent");
     const result = await runAction({
@@ -668,6 +672,7 @@ export function PullRequestDetailPanel({
         ...reference,
         action,
         ...(method ? { mergeMethod: method } : {}),
+        ...(mergeMessage === undefined ? {} : { mergeMessage }),
         ...(updateMethod ? { updateMethod } : {}),
       },
     });
@@ -706,10 +711,11 @@ export function PullRequestDetailPanel({
     action: PullRequestAction,
     method?: PullRequestMergeMethod,
     updateMethod?: PullRequestUpdateMethod,
+    mergeMessage?: string,
   ) => {
     if (!canWriteSourceControl || pendingAction !== null) return false;
     setPendingAction(action);
-    return finishAction(action, method, updateMethod);
+    return finishAction(action, method, updateMethod, mergeMessage);
   };
 
   const performCommentAction = async (body: string, action: "close" | "reopen") => {
@@ -1117,6 +1123,9 @@ export function PullRequestDetailPanel({
     lastSelectedMergeMethod,
   );
   const selectedMergeMethodLabel = PULL_REQUEST_MERGE_METHOD_LABELS[selectedMergeMethod];
+  const mergeMessagePrefill = detail && pullRequestMergeMessagePrefill(detail, selectedMergeMethod);
+  const onEditMergeMessage =
+    mergeMessagePrefill === null ? null : () => setMergeMessageKey(pullRequestKey);
   const pendingAutoMergeLabel = `Auto-merge (${selectedMergeMethodLabel.toLowerCase()})`;
   const conflicting = isPullRequestConflicting(detail);
   const autoMergeArmed = detail?.state === "open" && detail.autoMergeEnabled === true;
@@ -1331,6 +1340,20 @@ export function PullRequestDetailPanel({
                   }}
                 />
               ) : null}
+              {mergeMessagePrefill !== null ? (
+                <PullRequestMergeMessageDialog
+                  open={mergeMessageKey === pullRequestKey}
+                  onClose={() => setMergeMessageKey(null)}
+                  number={detail.number}
+                  baseBranch={detail.baseBranch}
+                  hostLabel={hostClient.label}
+                  term={terminology.singular}
+                  methodLabel={selectedMergeMethodLabel}
+                  prefill={mergeMessagePrefill}
+                  pending={pendingAction === "merge"}
+                  onMerge={(message) => perform("merge", selectedMergeMethod, undefined, message)}
+                />
+              ) : null}
               <PullRequestPrimaryAction
                 mergeBlockedReason={mergeBlockedReason}
                 pullRequestKey={pullRequestKey}
@@ -1343,6 +1366,7 @@ export function PullRequestDetailPanel({
                 statePresentation={statePresentation}
                 pendingAction={pendingAction}
                 perform={perform}
+                onEditMergeMessage={onEditMergeMessage}
                 resolveConflicts={resolveConflictsControl}
               />
               {checkoutControl}
@@ -1389,6 +1413,7 @@ export function PullRequestDetailPanel({
                 confirmDeleteBranch={confirmDeleteBranch}
                 pendingAction={pendingAction}
                 perform={perform}
+                onEditMergeMessage={onEditMergeMessage}
                 openOnHostText={openOnHostText}
                 copyReference={copyReference}
               />

@@ -305,6 +305,24 @@ layer("BitbucketPullRequestApi.layer", (it) => {
     }),
   );
 
+  it.effect("leaves the merge message to Bitbucket unless one was written", () =>
+    Effect.gen(function* () {
+      mockedRequest.mockReturnValue(Effect.succeed(response("{}")));
+      const api = yield* BitbucketPullRequestApi.BitbucketPullRequestApi;
+      const merge = { repository: "acme/web", number: 7, action: "merge" } as const;
+
+      yield* api.runAction({ ...merge, mergeMethod: "squash" });
+      yield* api.runAction({ ...merge, mergeMethod: "squash", mergeMessage: "Ship it\n\nBody" });
+
+      expect(callAt(0)).toMatchObject({
+        method: "POST",
+        url: "/repositories/acme/web/pullrequests/7/merge",
+        body: '{"merge_strategy":"squash"}',
+      });
+      expect(callAt(1).body).toBe('{"merge_strategy":"squash","message":"Ship it\\n\\nBody"}');
+    }),
+  );
+
   it.effect("posts a comment as a JSON document, so the body stays text", () =>
     Effect.gen(function* () {
       mockedRequest.mockReturnValue(Effect.succeed(response("{}")));

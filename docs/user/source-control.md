@@ -186,6 +186,10 @@ co-authors stay credited. The setting is off by default and projects can overrid
 applies to auto-merge, but not merge queues or native stack merges. Original commits keep their
 messages, so merge and rebase can still retain agent credits in those commits.
 
+Merging a Bitbucket pull request with the merge or squash strategy lets you write the commit message
+first. Leave the suggested text unchanged to use Bitbucket's default message. Rebase and quick
+actions always use Bitbucket's default.
+
 On web and desktop, hold **Shift** in the GitHub pull request list for quick actions.
 To close several, press **Close**, drag across the rows in the same group, and release.
 Press **Escape** before releasing to cancel. Failed closes stay in the list so you can retry them.

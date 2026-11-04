@@ -1,9 +1,10 @@
-import type {
-  PullRequestActor,
-  PullRequestCapabilities,
-  PullRequestComment,
-  PullRequestDetail,
-  PullRequestViewerPermissions,
+import {
+  SourceControlProviderKind,
+  type PullRequestActor,
+  type PullRequestCapabilities,
+  type PullRequestComment,
+  type PullRequestDetail,
+  type PullRequestViewerPermissions,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -11,6 +12,8 @@ import {
   canEditPullRequestChangeRequest,
   canEditPullRequestComment,
   canResolvePullRequestThread,
+  pullRequestMergeMessageOverride,
+  pullRequestMergeMessagePrefill,
 } from "./pullRequestEditing.ts";
 
 type Subject = Pick<PullRequestDetail, "author" | "capabilities" | "viewer" | "viewerPermissions">;
@@ -138,6 +141,44 @@ describe("canEditPullRequestChangeRequest", () => {
         subject({ viewer: undefined, viewerPermissions: permissions({ actions: ["merge"] }) }),
       ),
     ).toBe(true);
+  });
+});
+
+describe("pullRequestMergeMessagePrefill", () => {
+  const pullRequest = (
+    kind: string,
+    mergeMessageMethods?: PullRequestCapabilities["mergeMessageMethods"],
+  ) => ({
+    provider: SourceControlProviderKind.make(kind),
+    number: 7,
+    headBranch: "feat/page",
+    title: "Add page",
+    capabilities: {
+      ...capabilities(),
+      ...(mergeMessageMethods === undefined ? {} : { mergeMessageMethods }),
+    },
+  });
+
+  it("offers an editor only for a method the host takes a message with", () => {
+    const bitbucket = pullRequest("bitbucket", ["merge", "squash"]);
+    expect(pullRequestMergeMessagePrefill(bitbucket, "squash")).toBe(
+      "Merged in feat/page (pull request #7)\n\nAdd page",
+    );
+    expect(pullRequestMergeMessagePrefill(bitbucket, "rebase")).toBeNull();
+  });
+
+  it("offers none to a host or an older server that has not declared it", () => {
+    expect(pullRequestMergeMessagePrefill(pullRequest("github"), "squash")).toBeNull();
+    expect(pullRequestMergeMessagePrefill(pullRequest("bitbucket"), "squash")).toBeNull();
+  });
+});
+
+describe("pullRequestMergeMessageOverride", () => {
+  it("sends only a message the reader actually changed", () => {
+    expect(pullRequestMergeMessageOverride(null, "Default")).toBeUndefined();
+    expect(pullRequestMergeMessageOverride("  Default\n", "Default")).toBeUndefined();
+    expect(pullRequestMergeMessageOverride("   ", "Default")).toBeUndefined();
+    expect(pullRequestMergeMessageOverride(" Mine\n\nBody\n", "Default")).toBe("Mine\n\nBody");
   });
 });
 

@@ -100,6 +100,7 @@ export function PullRequestActionsMenu({
   confirmDeleteBranch,
   pendingAction,
   perform,
+  onEditMergeMessage,
   openOnHostText,
   copyReference,
 }: {
@@ -152,6 +153,7 @@ export function PullRequestActionsMenu({
   confirmDeleteBranch: () => Promise<void>;
   pendingAction: PullRequestAction | null;
   perform: PerformPullRequestAction;
+  onEditMergeMessage: (() => void) | null;
   openOnHostText: string;
   copyReference: (value: string, label: string) => void;
 }) {
@@ -329,10 +331,12 @@ export function PullRequestActionsMenu({
             ) : null}
             {showsMergeNow ? (
               <MenuItem
-                closeOnClick={inlineConfirm.isArmed("merge")}
+                closeOnClick={onEditMergeMessage !== null || inlineConfirm.isArmed("merge")}
                 aria-label={inlineConfirm.isArmed("merge") ? "Confirm merge?" : "Merge now"}
                 disabled={actionPending}
-                {...inlineConfirm.props("merge", () => void perform("merge", selectedMergeMethod))}
+                {...(onEditMergeMessage !== null
+                  ? { onClick: onEditMergeMessage }
+                  : inlineConfirm.props("merge", () => void perform("merge", selectedMergeMethod)))}
               >
                 <PullRequestGlyph.merged className="size-3.5" />
                 {inlineConfirm.isArmed("merge") ? "Confirm merge?" : "Merge now"}

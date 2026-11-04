@@ -270,6 +270,12 @@ export interface SourceControlDefinition {
    */
   readonly changeRequestActions: ReadonlySet<PullRequestAction>;
   readonly checkoutCommand: (changeRequest: ChangeRequestCheckoutInput) => string | null;
+  /** Prefills the merge message editor on a host that declares `mergeMessageMethods`. */
+  readonly defaultMergeMessage?: (changeRequest: {
+    readonly number: number;
+    readonly headBranch: string;
+    readonly title: string;
+  }) => string;
   /**
    * Matches a shell command that merges or closes a change request with this host's CLI, which
    * sends T3 no notification of its own. Absent for a host with no such CLI.

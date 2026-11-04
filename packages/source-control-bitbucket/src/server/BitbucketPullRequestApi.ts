@@ -228,6 +228,7 @@ export class BitbucketPullRequestApi extends Context.Service<
       readonly number: number;
       readonly action: PullRequestAction;
       readonly mergeMethod?: PullRequestMergeMethod;
+      readonly mergeMessage?: string;
     }) => Effect.Effect<void, BitbucketPullRequestApiError>;
 
     readonly updateChangeRequest: (input: {
@@ -750,7 +751,10 @@ export const make = Effect.gen(function* () {
             .request({
               method: "POST",
               url: `${pullRequest}/merge`,
-              body: JSON.stringify({ merge_strategy: mergeStrategy(input.mergeMethod) }),
+              body: JSON.stringify({
+                merge_strategy: mergeStrategy(input.mergeMethod),
+                ...(input.mergeMessage === undefined ? {} : { message: input.mergeMessage }),
+              }),
             })
             .pipe(Effect.asVoid);
         }

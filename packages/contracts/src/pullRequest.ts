@@ -262,6 +262,8 @@ export const PullRequestCapabilities = Schema.Struct({
   comment: Schema.Boolean,
   actions: ForwardCompatibleArray(PullRequestAction),
   mergeMethods: ForwardCompatibleArray(PullRequestMergeMethod),
+  /** Methods whose merge commit message the reader may write. Absent offers none. */
+  mergeMessageMethods: Schema.optional(ForwardCompatibleArray(PullRequestMergeMethod)),
   deleteBranch: Schema.optional(Schema.Boolean),
   /**
    * Absent where it cannot at all, which is every host that has not said otherwise — so a
@@ -732,6 +734,8 @@ export const PullRequestActionInput = Schema.Struct({
   ...PullRequestRef.fields,
   action: PullRequestAction,
   mergeMethod: Schema.optional(PullRequestMergeMethod),
+  /** Only send with a `mergeMethod` the host lists in `mergeMessageMethods`. */
+  mergeMessage: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(65_536))),
   updateMethod: Schema.optional(PullRequestUpdateMethod),
 });
 export type PullRequestActionInput = typeof PullRequestActionInput.Type;

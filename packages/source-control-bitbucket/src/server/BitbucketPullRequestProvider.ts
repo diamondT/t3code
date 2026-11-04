@@ -20,6 +20,8 @@ const CAPABILITIES: PullRequestCapabilities = {
   comment: true,
   actions: [...definition.changeRequestActions],
   mergeMethods: ["merge", "squash", "rebase"],
+  // Rebase maps to rebase_fast_forward, which makes no commit to carry a message.
+  mergeMessageMethods: ["merge", "squash"],
   search: true,
   reactions: false,
   review: {
@@ -312,6 +314,7 @@ export const make = Effect.gen(function* () {
           number: input.number,
           action: input.action,
           ...(input.mergeMethod === undefined ? {} : { mergeMethod: input.mergeMethod }),
+          ...(input.mergeMessage === undefined ? {} : { mergeMessage: input.mergeMessage }),
         })
         .pipe(Effect.mapError(fail("runAction"))),
 

@@ -107,6 +107,9 @@ export const definition = defineSourceControl({
     safeShellArgument.test(headBranch)
       ? `git clone --single-branch --branch ${headBranch} https://bitbucket.org/${headRepositoryNameWithOwner}.git t3code-pr-${number}`
       : null,
+  // Mirrors the opening of Bitbucket's own message, which no endpoint returns.
+  defaultMergeMessage: ({ number, headBranch, title }) =>
+    `Merged in ${headBranch} (pull request #${number})\n\n${title}`,
   authorProfileUrl: () => null,
   reviewSummaryRequired: () => false,
   checkoutCommandArgument: () => null,

@@ -1,5 +1,7 @@
 import * as Dialog from "../../components/ui/Dialog";
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
+import { useNavigation } from "@react-navigation/native";
+import { pullRequestMergeMessagePrefill } from "@t3tools/client-runtime/pull-request-editing";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 import type { PullRequestDetail, PullRequestMergeMethod } from "@t3tools/contracts";
@@ -34,6 +36,7 @@ export function PullRequestMergeControls(props: {
   readonly stack: PullRequestStackState;
 }) {
   const { pr, stack } = props;
+  const navigation = useNavigation();
   const terminology = sourceControlClients.get(pr.provider).changeRequest;
   const target = pullRequestTarget(props.params);
   const permissions = usePullRequestPermissions(props.params, pr);
@@ -176,6 +179,15 @@ export function PullRequestMergeControls(props: {
     }
   };
   const confirm = (action: "merge" | "enable-auto-merge" | "disable-auto-merge") => {
+    if (
+      action === "merge" &&
+      method &&
+      !stack.stack &&
+      pullRequestMergeMessagePrefill(pr, method) !== null
+    ) {
+      navigation.navigate("PullRequestMergeMessage", { ...props.params, mergeMethod: method });
+      return;
+    }
     const title =
       action === "merge"
         ? scope && scope.layers.length > 1
