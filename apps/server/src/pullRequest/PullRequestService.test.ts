@@ -149,6 +149,31 @@ it.effect("reads maintainer edits and changes them through the update command", 
   }),
 );
 
+it.effect("passes the repository's default merge method to clients", () =>
+  Effect.gen(function* () {
+    const service = yield* makeService({
+      projects: [project({ id: "p1", title: "web", workspaceRoot: "/w", repository: "acme/web" })],
+      providers: [
+        fakePullRequestProvider(SourceControlProviderKind.make("github"), {
+          getChangeRequest: () =>
+            Effect.succeed({
+              ...hostedChangeRequest("Body"),
+              defaultMergeMethod: "squash" as const,
+            }),
+        }),
+      ],
+    });
+
+    const detail = yield* service.detail({
+      projectId: "p1" as ProjectId,
+      repository: "acme/web",
+      number: 1,
+    });
+
+    assert.strictEqual(detail.defaultMergeMethod, "squash");
+  }),
+);
+
 it.effect("refuses maintainer edits on a host without the capability", () =>
   Effect.gen(function* () {
     let writes = 0;

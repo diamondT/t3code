@@ -1,4 +1,5 @@
 import { projectChangeRequestUrl } from "@t3tools/client-runtime/change-request-links";
+import { resolvePullRequestMergeMethod } from "@t3tools/client-runtime/pull-request-merge-method";
 import { normalizeThreadPullRequestKey } from "@t3tools/client-runtime/thread-pull-requests";
 import { useAtomValue } from "@effect/atom-react";
 import { usePullRequestStack } from "~/state/usePullRequestStack";
@@ -137,7 +138,6 @@ import {
   canDeletePullRequestBranch,
   isPullRequestConflicting,
   resolveBaseFreshness,
-  resolvePullRequestMergeMethod,
   type PullRequestFinding,
   shouldRefreshPullRequestActivity,
   stripPullRequestHandoffReferences,
@@ -1110,12 +1110,13 @@ export function PullRequestDetailPanel({
   const allowedMergeMethods = allowedPullRequestMergeMethods(detail);
   const currentMergeMethod =
     mergeMethodSelection?.pullRequestKey === pullRequestKey ? mergeMethodSelection.method : null;
-  const selectedMergeMethod = resolvePullRequestMergeMethod(
-    allowedMergeMethods,
-    currentMergeMethod,
-    projectDefaultMergeMethod,
-    lastSelectedMergeMethod,
-  );
+  const selectedMergeMethod = resolvePullRequestMergeMethod({
+    allowed: allowedMergeMethods,
+    picked: currentMergeMethod,
+    configuredDefault: projectDefaultMergeMethod,
+    repositoryDefault: detail?.defaultMergeMethod,
+    lastSelected: lastSelectedMergeMethod,
+  });
   const selectedMergeMethodLabel = PULL_REQUEST_MERGE_METHOD_LABELS[selectedMergeMethod];
   const pendingAutoMergeLabel = `Auto-merge (${selectedMergeMethodLabel.toLowerCase()})`;
   const conflicting = isPullRequestConflicting(detail);

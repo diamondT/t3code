@@ -1,8 +1,10 @@
 import * as Dialog from "../../components/ui/Dialog";
 import { useAtomRefresh, useAtomSet, useAtomValue } from "@effect/atom-react";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import { resolvePullRequestMergeMethod } from "@t3tools/client-runtime/pull-request-merge-method";
 import { sourceControlClients } from "@t3tools/client-runtime/source-control-clients";
 import type { PullRequestDetail, PullRequestMergeMethod } from "@t3tools/contracts";
+import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
 import { AsyncResult } from "effect/reactivity";
 import { useRef, useState } from "react";
 import { View } from "react-native";
@@ -11,6 +13,7 @@ import { Button } from "../../components/ui/Button";
 import { SplitButton } from "../../components/ui/SplitButton";
 import { mobilePreferencesAtom, updateMobilePreferencesAtom } from "../../state/preferences";
 import { composerPullRequests } from "../../state/pull-requests";
+import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
 import {
   allowedMergeMethods,
@@ -39,6 +42,7 @@ export function PullRequestMergeControls(props: {
   const permissions = usePullRequestPermissions(props.params, pr);
   const stateAction = usePullRequestAction(props.params, pr);
   const preferences = useAtomValue(mobilePreferencesAtom);
+  const settings = useAtomValue(serverEnvironment.settingsValueAtom(target.environmentId));
   const savePreferences = useAtomSet(updateMobilePreferencesAtom);
   const runAction = useAtomCommand(composerPullRequests.runAction, { reportFailure: false });
   const refreshDetail = useAtomRefresh(composerPullRequests.detail(target));
@@ -47,15 +51,22 @@ export function PullRequestMergeControls(props: {
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
   const methods = allowedMergeMethods(pr);
-  const preferred =
-    selectedMethod ??
-    (AsyncResult.isSuccess(preferences) ? preferences.value.pullRequestMergeMethod : undefined) ??
-    "squash";
-  const method = methods.includes(preferred)
-    ? preferred
-    : methods.includes("squash")
-      ? "squash"
-      : methods[0];
+  const method =
+    methods.length === 0
+      ? undefined
+      : resolvePullRequestMergeMethod({
+          allowed: methods,
+          picked: selectedMethod,
+          configuredDefault: settings
+            ? resolveProjectSettings(settings, target.input.projectId).settings
+                .pullRequestMergeMethod
+            : null,
+          repositoryDefault: pr.defaultMergeMethod,
+          lastSelected:
+            (AsyncResult.isSuccess(preferences)
+              ? preferences.value.pullRequestMergeMethod
+              : undefined) ?? "squash",
+        });
   const scope = stack.stack ? pullRequestStackMerge(stack.stack, pr.number, terminology) : null;
   const canMergeSingle = singlePullRequestMergeAllowed({
     supportsStackActions: stack.supportsStackActions,

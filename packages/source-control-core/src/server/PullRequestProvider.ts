@@ -198,6 +198,7 @@ export interface ProviderChangeRequestDetail extends ProviderChangeRequest {
   readonly reviewers: ReadonlyArray<PullRequestActor>;
   readonly checks: ReadonlyArray<PullRequestCheck>;
   readonly mergeCapabilities: PullRequestMergeCapabilities;
+  readonly defaultMergeMethod?: PullRequestMergeMethod;
   readonly viewerPermissions: PullRequestViewerPermissions;
   readonly baseComparison?: PullRequestBaseComparison;
   readonly behindBy?: number;

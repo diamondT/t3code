@@ -1,6 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
 import type { PullRequestAction } from "@t3tools/contracts";
 import { createContext, use, type ReactNode } from "react";
+import { resolvePullRequestMergeMethod } from "@t3tools/client-runtime/pull-request-merge-method";
 import type { ChangeRequestTerminology } from "@t3tools/client-runtime/source-control-clients";
 
 import { useShortcutModifierState } from "~/shortcutModifierState";
@@ -9,7 +10,6 @@ import { useUiStateStore } from "~/uiStateStore";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import { resolvePullRequestMergeMethod } from "./pullRequestDetail.logic";
 import { PullRequestGlyph } from "./pullRequestIcons";
 import { pullRequestQuickActions, type EnvironmentPullRequestEntry } from "./pullRequestList.logic";
 import {
@@ -68,12 +68,13 @@ export function PullRequestSpeedActions<Entry extends PullRequestSpeedActionEntr
       );
       if (allowed.length === 0)
         throw new Error("No merge method is available for this repository.");
-      return resolvePullRequestMergeMethod(
+      return resolvePullRequestMergeMethod({
         allowed,
-        null,
-        resolveProjectDefault(),
-        useUiStateStore.getState().pullRequestMergeMethod,
-      );
+        picked: null,
+        configuredDefault: resolveProjectDefault(),
+        repositoryDefault: detail.defaultMergeMethod,
+        lastSelected: useUiStateStore.getState().pullRequestMergeMethod,
+      });
     },
   });
   const actions = pullRequestQuickActions(entry, hostActions);

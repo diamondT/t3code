@@ -28,6 +28,7 @@ import * as BitbucketApi from "./BitbucketApi.ts";
 import { parseDiffFileRevisions } from "@t3tools/source-control-core/server/diffFileRevisions";
 import { sortChecks } from "@t3tools/source-control-core/server/pullRequestChecks";
 import {
+  BITBUCKET_MERGE_STRATEGIES,
   buildReviewThreads,
   decodeCommentsJson,
   decodeCommitsJson,
@@ -337,17 +338,6 @@ function updatedBeforeFilter(updatedBefore: string): string {
   });
 }
 
-function mergeStrategy(method: PullRequestMergeMethod | undefined): string {
-  switch (method) {
-    case "squash":
-      return "squash";
-    case "rebase":
-      return "rebase_fast_forward";
-    default:
-      return "merge_commit";
-  }
-}
-
 function bitbucketReviewPosition(
   position: PullRequestReviewPosition,
 ): { readonly from: number } | { readonly to: number } {
@@ -583,7 +573,7 @@ export const make = Effect.gen(function* () {
         readPage({
           operation: "getPullRequest",
           // Settlement needs `closed_on`, omitted by default.
-          url: `${path}/pullrequests/${input.number}?fields=%2Bclosed_on`,
+          url: `${path}/pullrequests/${input.number}?fields=%2Bclosed_on,%2Bdestination.branch.merge_strategies,%2Bdestination.branch.default_merge_strategy`,
           decode: decodePullRequestJson,
         }),
       );
@@ -750,7 +740,9 @@ export const make = Effect.gen(function* () {
             .request({
               method: "POST",
               url: `${pullRequest}/merge`,
-              body: JSON.stringify({ merge_strategy: mergeStrategy(input.mergeMethod) }),
+              body: JSON.stringify({
+                merge_strategy: BITBUCKET_MERGE_STRATEGIES[input.mergeMethod ?? "merge"],
+              }),
             })
             .pipe(Effect.asVoid);
         }

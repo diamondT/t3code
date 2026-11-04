@@ -478,7 +478,7 @@ export function ProjectDefaultsSettings({ category }: { category: ProjectSetting
             description={
               isProjectScope
                 ? "Pull requests in this project start with this method."
-                : "Pull requests start with this method. Last selected reuses whatever you chose most recently on this device."
+                : "Pull requests start with this method. Last selected uses the repository's default where the host reports one, otherwise whatever you chose most recently on this device."
             }
             resetAction={
               settings.pullRequestMergeMethod !== null ? (

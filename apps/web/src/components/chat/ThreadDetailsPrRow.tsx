@@ -1,4 +1,5 @@
 import { resolvePullRequestDetailChecks } from "@t3tools/client-runtime/pull-request-checks";
+import { resolvePullRequestMergeMethod } from "@t3tools/client-runtime/pull-request-merge-method";
 import {
   capitalizeTerm,
   sourceControlClients,
@@ -38,7 +39,6 @@ import {
   classifyPullRequestChecks,
   describePullRequestChecks,
   isPullRequestConflicting,
-  resolvePullRequestMergeMethod,
   allowedPullRequestMergeMethods,
   resolveThreadPanelPullRequestAction,
 } from "../pullRequest/pullRequestDetail.logic";
@@ -183,12 +183,13 @@ export function ThreadDetailsPrRow({
   const conflicting = isPullRequestConflicting(detail);
   const checksState = detail === null ? "none" : classifyPullRequestChecks(detail.checks);
   const checksRollup = detail === null ? null : pullRequestChecksState(detail.checks);
-  const selectedMergeMethod = resolvePullRequestMergeMethod(
-    allowedPullRequestMergeMethods(detail),
-    null,
-    resolveProjectDefaultMergeMethod(),
-    lastSelectedMergeMethod,
-  );
+  const selectedMergeMethod = resolvePullRequestMergeMethod({
+    allowed: allowedPullRequestMergeMethods(detail),
+    picked: null,
+    configuredDefault: resolveProjectDefaultMergeMethod(),
+    repositoryDefault: detail?.defaultMergeMethod,
+    lastSelected: lastSelectedMergeMethod,
+  });
 
   const startResolveConflicts = () => {
     if (detail === null) return;

@@ -230,8 +230,10 @@ export const make = Effect.gen(function* () {
             closedAt: pullRequest.state === "closed" ? pullRequest.closedAt : null,
             reviewers: pullRequest.reviewers,
             checks,
-            // Bitbucket exposes no strategy permissions; unsupported strategies fail at merge.
-            mergeCapabilities: { merge: true, squash: true, rebase: true },
+            mergeCapabilities: pullRequest.mergeCapabilities,
+            ...(pullRequest.defaultMergeMethod === undefined
+              ? {}
+              : { defaultMergeMethod: pullRequest.defaultMergeMethod }),
             viewerPermissions: bitbucketViewerPermissions({ canWrite }),
           }),
         ),

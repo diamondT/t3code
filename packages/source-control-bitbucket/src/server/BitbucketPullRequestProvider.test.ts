@@ -62,6 +62,70 @@ it.effect.each([
   }),
 );
 
+it.effect.each([
+  {
+    branch: {
+      merge_strategies: ["squash", "fast_forward"],
+      default_merge_strategy: "squash",
+    },
+    mergeCapabilities: { merge: false, squash: true, rebase: false },
+    defaultMergeMethod: "squash",
+  },
+  {
+    branch: {
+      merge_strategies: ["merge_commit", "rebase_fast_forward", "fast_forward"],
+      default_merge_strategy: "fast_forward",
+    },
+    mergeCapabilities: { merge: true, squash: false, rebase: true },
+    defaultMergeMethod: undefined,
+  },
+  {
+    branch: {},
+    mergeCapabilities: { merge: true, squash: true, rebase: true },
+    defaultMergeMethod: undefined,
+  },
+])(
+  "reads merge methods from the destination branch: $branch.default_merge_strategy",
+  ({ branch, mergeCapabilities, defaultMergeMethod }) =>
+    Effect.gen(function* () {
+      const pullRequest = Result.getOrThrow(
+        decodePullRequestJson(
+          JSON.stringify({
+            id: 52,
+            title: "Release",
+            state: "OPEN",
+            source: { branch: { name: "release" } },
+            destination: { branch: { name: "master", ...branch } },
+            created_on: "2025-06-16T06:20:58.415108+00:00",
+            updated_on: "2025-06-20T10:00:00.000000+00:00",
+            links: { html: { href: "https://bitbucket.org/acme/web/pull-requests/52" } },
+          }),
+        ),
+      );
+      const provider = yield* make.pipe(
+        Effect.provide(
+          Layer.mock(BitbucketPullRequestApi.BitbucketPullRequestApi)({
+            getPullRequest: () => Effect.succeed(pullRequest),
+            getDiffStat: () => Effect.succeed({ additions: 0, deletions: 0, changedFiles: 0 }),
+            getMergeability: () => Effect.succeed("unknown"),
+            listChecks: () => Effect.succeed([]),
+            getRepositoryPermission: () => Effect.succeed(true),
+          }),
+        ),
+      );
+
+      const detail = yield* provider.getChangeRequest({
+        cwd: "/repo",
+        repository: "acme/web",
+        host: "bitbucket.org",
+        number: 52,
+      });
+
+      expect(detail.mergeCapabilities).toEqual(mergeCapabilities);
+      expect(detail.defaultMergeMethod).toBe(defaultMergeMethod);
+    }),
+);
+
 for (const operation of [
   "getMergeability",
   "listChecks",

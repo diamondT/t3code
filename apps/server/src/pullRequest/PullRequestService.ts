@@ -1789,6 +1789,9 @@ export const make = Effect.gen(function* () {
             labels: changeRequest.labels,
             checks: changeRequest.checks,
             mergeCapabilities: changeRequest.mergeCapabilities,
+            ...(changeRequest.defaultMergeMethod === undefined
+              ? {}
+              : { defaultMergeMethod: changeRequest.defaultMergeMethod }),
             viewerPermissions: changeRequest.viewerPermissions,
             ...(viewer === null || viewer.trim().length === 0 ? {} : { viewer }),
             ...(changeRequest.baseComparison === undefined

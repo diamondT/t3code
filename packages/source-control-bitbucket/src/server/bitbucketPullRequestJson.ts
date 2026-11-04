@@ -12,12 +12,13 @@ import type {
   PullRequestCheckStatus,
   PullRequestComment,
   PullRequestCommit,
+  PullRequestMergeCapabilities,
   PullRequestMergeability,
   PullRequestReviewThread,
   PullRequestReviewerCandidate,
   PullRequestState,
 } from "@t3tools/contracts";
-import { TrimmedNonEmptyString } from "@t3tools/contracts";
+import { PullRequestMergeMethod, TrimmedNonEmptyString } from "@t3tools/contracts";
 import { decodeJsonResult } from "@t3tools/shared/schemaJson";
 
 import { dedupeChecks } from "@t3tools/source-control-core/server/pullRequestChecks";
@@ -41,7 +42,12 @@ const RawUserSchema = Schema.Struct({
 });
 
 const RawBranchSchema = Schema.Struct({
-  branch: Schema.Struct({ name: TrimmedNonEmptyString }),
+  branch: Schema.Struct({
+    name: TrimmedNonEmptyString,
+    /** Only meaningful on the destination branch. */
+    merge_strategies: Schema.optional(Schema.NullOr(Schema.Array(Schema.String))),
+    default_merge_strategy: Schema.optional(Schema.NullOr(Schema.String)),
+  }),
   commit: Schema.optional(
     Schema.NullOr(Schema.Struct({ hash: Schema.optional(Schema.NullOr(Schema.String)) })),
   ),
@@ -167,6 +173,8 @@ export interface BitbucketPullRequest {
   readonly isDraft: boolean;
   /** Listings omit conflict state; detail reads use the conflicts endpoint. */
   readonly mergeability: PullRequestMergeability;
+  readonly mergeCapabilities: PullRequestMergeCapabilities;
+  readonly defaultMergeMethod?: PullRequestMergeMethod;
   readonly createdAt: string;
   readonly updatedAt: string;
   /** Merge/decline time; later comments move `updatedAt`. */
@@ -176,6 +184,27 @@ export interface BitbucketPullRequest {
   readonly reviewers: ReadonlyArray<PullRequestActor>;
   readonly reviewerIds: ReadonlyArray<string>;
   readonly reviews: ReadonlyArray<PullRequestComment>;
+}
+
+export const BITBUCKET_MERGE_STRATEGIES = {
+  merge: "merge_commit",
+  squash: "squash",
+  rebase: "rebase_fast_forward",
+} as const satisfies Record<PullRequestMergeMethod, string>;
+
+function toMergeCapabilities(
+  strategies: ReadonlyArray<string> | null | undefined,
+): PullRequestMergeCapabilities {
+  // Unreported strategies stay offered; Bitbucket still enforces them at merge.
+  const allows = (method: PullRequestMergeMethod) =>
+    !strategies?.length || strategies.includes(BITBUCKET_MERGE_STRATEGIES[method]);
+  return { merge: allows("merge"), squash: allows("squash"), rebase: allows("rebase") };
+}
+
+function toDefaultMergeMethod(strategy: string | null | undefined) {
+  return PullRequestMergeMethod.literals.find(
+    (method) => BITBUCKET_MERGE_STRATEGIES[method] === strategy,
+  );
 }
 
 function toActor(raw: Schema.Schema.Type<typeof RawUserSchema> | null | undefined) {
@@ -245,6 +274,7 @@ function toPullRequest(raw: Schema.Schema.Type<typeof RawPullRequestSchema>): Bi
     const actor = toActor(reviewer);
     return actor === null ? [] : [actor];
   });
+  const defaultMergeMethod = toDefaultMergeMethod(raw.destination.branch.default_merge_strategy);
   return {
     number: raw.id,
     title: raw.title,
@@ -257,6 +287,8 @@ function toPullRequest(raw: Schema.Schema.Type<typeof RawPullRequestSchema>): Bi
     state: toState(raw),
     isDraft: raw.draft ?? false,
     mergeability: "unknown",
+    mergeCapabilities: toMergeCapabilities(raw.destination.branch.merge_strategies),
+    ...(defaultMergeMethod === undefined ? {} : { defaultMergeMethod }),
     createdAt: toIsoUtc(raw.created_on),
     updatedAt: toIsoUtc(raw.updated_on),
     closedAt: raw.closed_on == null ? null : toIsoUtc(raw.closed_on),

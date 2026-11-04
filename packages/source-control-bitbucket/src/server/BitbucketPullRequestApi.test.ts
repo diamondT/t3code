@@ -333,7 +333,9 @@ layer("BitbucketPullRequestApi.layer", (it) => {
 
       const pullRequest = yield* api.getPullRequest({ repository: "acme/web", number: 7 });
 
-      expect(callAt(0).url).toBe("/repositories/acme/web/pullrequests/7?fields=%2Bclosed_on");
+      expect(callAt(0).url).toBe(
+        "/repositories/acme/web/pullrequests/7?fields=%2Bclosed_on,%2Bdestination.branch.merge_strategies,%2Bdestination.branch.default_merge_strategy",
+      );
       assert.strictEqual(pullRequest.closedAt, "2025-06-16T23:40:46.222Z");
     }),
   );
